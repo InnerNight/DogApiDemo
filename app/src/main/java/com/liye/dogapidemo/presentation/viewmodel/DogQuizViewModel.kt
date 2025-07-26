@@ -1,10 +1,13 @@
 package com.liye.dogapidemo.presentation.viewmodel
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.liye.dogapidemo.data.model.DogBreed
 import com.liye.dogapidemo.data.model.QuizQuestion
 import com.liye.dogapidemo.data.repository.DogRepository
+import com.liye.dogapidemo.data.repository.LocalCacheRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,20 +28,19 @@ data class DogQuizUiState(
     val gameFinished: Boolean = false
 )
 
-class DogQuizViewModel : ViewModel() {
-    private val repository = DogRepository()
-    
+class DogQuizViewModel(private val repository: DogRepository) : ViewModel() {
+
     private val _uiState = MutableStateFlow(DogQuizUiState())
     val uiState: StateFlow<DogQuizUiState> = _uiState.asStateFlow()
-    
+
     init {
         initializeQuiz()
     }
-    
+
     private fun initializeQuiz() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            
+
             repository.preloadBreeds().fold(
                 onSuccess = {
                     loadNextQuestion()
@@ -52,11 +54,11 @@ class DogQuizViewModel : ViewModel() {
             )
         }
     }
-    
+
     fun loadNextQuestion() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
+
             repository.generateQuizQuestion().fold(
                 onSuccess = { question ->
                     _uiState.value = _uiState.value.copy(
@@ -76,14 +78,14 @@ class DogQuizViewModel : ViewModel() {
             )
         }
     }
-    
+
     fun selectAnswer(breed: DogBreed) {
         val currentState = _uiState.value
         val currentQuestion = currentState.currentQuestion ?: return
-        
+
         val isCorrect = breed.name == currentQuestion.correctBreed.name
         val newScore = if (isCorrect) currentState.score + 1 else currentState.score
-        
+
         _uiState.value = currentState.copy(
             selectedAnswer = breed,
             showResult = true,
@@ -91,7 +93,7 @@ class DogQuizViewModel : ViewModel() {
             score = newScore
         )
     }
-    
+
     fun nextQuestion() {
         if (_uiState.value.totalQuestions >= 10) {
             _uiState.value = _uiState.value.copy(gameFinished = true)
@@ -99,18 +101,30 @@ class DogQuizViewModel : ViewModel() {
             loadNextQuestion()
         }
     }
-    
+
     fun restartGame() {
         _uiState.value = DogQuizUiState()
         loadNextQuestion()
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     override fun onCleared() {
         super.onCleared()
         repository.cleanup()
+    }
+}
+
+class DogQuizViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DogQuizViewModel::class.java)) {
+            val localCacheRepository = LocalCacheRepository(application)
+            val repository = DogRepository(localCacheRepository)
+            @Suppress("UNCHECKED_CAST")
+            return DogQuizViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
