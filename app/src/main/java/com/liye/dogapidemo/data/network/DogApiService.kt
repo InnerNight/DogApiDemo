@@ -12,6 +12,13 @@ import io.ktor.client.request.get
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
+// 添加新的数据模型用于获取图片列表
+@kotlinx.serialization.Serializable
+data class DogImagesResponse(
+    val message: List<String>,
+    val status: String
+)
+
 class DogApiService {
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
@@ -43,6 +50,11 @@ class DogApiService {
 
     suspend fun getRandomDogImageByBreedAndSubBreed(breed: String, subBreed: String): DogImageResponse {
         return client.get("$BASE_URL/breed/$breed/$subBreed/images/random").body()
+    }
+
+    // 添加获取特定品种所有图片的方法
+    suspend fun getDogImagesByBreed(breed: String): DogImagesResponse {
+        return client.get("$BASE_URL/breed/$breed/images").body()
     }
 
     fun close() {

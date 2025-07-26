@@ -4,15 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -90,8 +95,8 @@ fun DogListScreen(
         else -> {
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(uiState.breeds) { breed ->
                     DogBreedItem(breed = breed)
@@ -106,53 +111,65 @@ fun DogBreedItem(
     breed: DogBreed,
     modifier: Modifier = Modifier
 ) {
-    var imageUrl by remember { mutableStateOf<String?>(null) }
-    var imageLoading by remember { mutableStateOf(true) }
-    var imageError by remember { mutableStateOf(false) }
+    var imageUrl by remember(breed.name) { mutableStateOf<String?>(null) }
+    var imageLoading by remember(breed.name) { mutableStateOf(true) }
+    var imageError by remember(breed.name) { mutableStateOf(false) }
 
-    // 获取 breed 的随机图片
-    LaunchedEffect(breed) {
-        imageLoading = true
-        imageError = false
-        try {
-            // 构造 API 服务
-            val apiService = com.liye.dogapidemo.data.network.DogApiService()
+    // 获取 breed 的第一张图片
+    LaunchedEffect(breed.name) {
+        // 只有当图片URL为空时才加载，避免重复加载
+        if (imageUrl == null) {
+            imageLoading = true
+            imageError = false
+            try {
+                // 构造 API 服务
+                val apiService = com.liye.dogapidemo.data.network.DogApiService()
 
-            // 如果有子品种，随机选择一个子品种或者主品种
-            val imageResponse = if (breed.subBreeds.isNotEmpty() && (0..1).random() == 1) {
-                // 随机选择一个子品种
-                val randomSubBreed = breed.subBreeds.random()
-                apiService.getRandomDogImageByBreedAndSubBreed(breed.name, randomSubBreed)
-            } else {
-                // 使用主品种
-                apiService.getRandomDogImageByBreed(breed.name)
+                // 获取该品种的所有图片，使用第一张作为显示图片
+                val imagesResponse = if (breed.subBreeds.isNotEmpty() && (0..1).random() == 1) {
+                    // 随机选择一个子品种
+                    val randomSubBreed = breed.subBreeds.random()
+                    // 子品种的API格式是 breed/subbreed
+                    apiService.getDogImagesByBreed("${breed.name}/$randomSubBreed")
+                } else {
+                    // 使用主品种
+                    apiService.getDogImagesByBreed(breed.name)
+                }
+
+                // 使用第一张图片
+                if (imagesResponse.message.isNotEmpty()) {
+                    imageUrl = imagesResponse.message.first()
+                } else {
+                    // 如果没有图片，尝试获取随机图片
+                    val imageResponse = if (breed.subBreeds.isNotEmpty() && (0..1).random() == 1) {
+                        val randomSubBreed = breed.subBreeds.random()
+                        apiService.getRandomDogImageByBreedAndSubBreed(breed.name, randomSubBreed)
+                    } else {
+                        apiService.getRandomDogImageByBreed(breed.name)
+                    }
+                    imageUrl = imageResponse.message
+                }
+
+                apiService.close()
+            } catch (e: Exception) {
+                imageError = true
+                imageLoading = false
+            } finally {
+                imageLoading = false
             }
-
-            imageUrl = imageResponse.message
-            apiService.close()
-        } catch (e: Exception) {
-            imageError = true
-            imageLoading = false
-        } finally {
-            imageLoading = false
         }
     }
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Breed name
-            Text(
-                text = breed.getDisplayName(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
             // Breed image
             if (imageUrl != null && !imageError) {
                 AsyncImage(
@@ -162,8 +179,9 @@ fun DogBreedItem(
                         .build(),
                     contentDescription = "${breed.getDisplayName()} image",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(6.dp)),
+                    contentScale = ContentScale.Crop,
                     onError = {
                         imageError = true
                     }
@@ -171,37 +189,51 @@ fun DogBreedItem(
             } else if (imageLoading) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
                 }
             } else {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Image not available")
+                    Text(
+                        text = "No Image",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            
-            // Sub-breeds
-            if (breed.subBreeds.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Breed name
                 Text(
-                    text = "Sub-breeds:",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
+                    text = breed.getDisplayName(),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                breed.subBreeds.forEach { subBreed ->
+
+                // Sub-breeds count
+                if (breed.subBreeds.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "• ${subBreed.replaceFirstChar { it.uppercase() }} ${breed.getDisplayName()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = "${breed.subBreeds.size} sub-breeds",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

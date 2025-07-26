@@ -14,9 +14,10 @@ An Android application that showcases different dog breeds with two main feature
 
 ### 📋 Dog Breeds List
 - Browse all available dog breeds
-- View images of each breed
+- View images of each breed (using first image from the breed's image collection)
 - See sub-breeds information
-- Clean and intuitive interface
+- Optimized list display with compact items (7-8 items per screen)
+- Efficient image loading with caching
 
 ### 🚀 Technical Features
 - Built with Jetpack Compose for modern Android UI
@@ -24,6 +25,7 @@ An Android application that showcases different dog breeds with two main feature
 - Implements local caching with SharedPreferences
 - Follows MVVM architecture pattern
 - Repository pattern for data management
+- Three-level caching strategy (Memory → Local → Network)
 
 ## Architecture
 
@@ -45,43 +47,6 @@ The app follows a clean MVVM (Model-View-ViewModel) architecture:
                                 │ └──────────────┘ │
                                 └──────────────────┘
 ```
-
-## Screenshots
-
-### Entrance Screen
-<p align="center">
-  <img src="screenshots/entrance.png" width="300" alt="Entrance Screen">
-</p>
-
-### Quiz Screen
-<p align="center">
-  <img src="screenshots/quiz.png" width="300" alt="Quiz Screen">
-</p>
-
-### Breeds List
-<p align="center">
-  <img src="screenshots/list.png" width="300" alt="Breeds List">
-</p>
-
-## Tech Stack
-
-- **Kotlin** - Modern, concise, and safe programming language
-- **Jetpack Compose** - Modern toolkit for building native UI
-- **Ktor** - Framework for building asynchronous clients and servers
-- **Kotlinx Serialization** - Multiplatform serialization library
-- **Coil** - Image loading library for Android
-- **ViewModel** - Store and manage UI-related data in a lifecycle conscious way
-- **SharedPreferences** - Framework for storing key-value pairs
-
-## Dependencies
-
-- `androidx.core:core-ktx` - Kotlin extensions for Android core libraries
-- `androidx.lifecycle:lifecycle-runtime-ktx` - Lifecycle-aware components
-- `androidx.activity:activity-compose` - Compose integration with Activity
-- `androidx.compose.*` - Jetpack Compose components
-- `io.ktor:*` - Ktor client and serialization
-- `io.coil-kt:coil-compose` - Image loading
-- `org.jetbrains.kotlinx:kotlinx-serialization-json` - JSON serialization
 
 ## Project Structure
 
@@ -107,6 +72,53 @@ com.liye.dogapidemo
 ├── MainActivity.kt
 └── DogListActivity.kt
 ```
+
+## Key Components
+
+### EntranceActivity
+The main entry point of the app with two options:
+- Start Quiz Challenge: Opens the dog breed quiz game
+- View All Breeds: Opens the comprehensive dog breeds list
+
+### MainActivity
+Hosts the DogQuizScreen for the quiz game functionality.
+
+### DogListActivity
+Displays a scrollable list of all dog breeds with:
+- Compact list items for better screen utilization
+- Breed images loaded from the first image in each breed's collection
+- Sub-breeds information displayed below each breed name
+- Optimized image loading that prevents flickering when scrolling
+
+### DogRepository
+Implements a three-level caching strategy:
+1. Memory cache for fastest access
+2. Local SharedPreferences cache for offline access
+3. Network requests for fresh data
+- Returns cached data immediately while refreshing in the background
+
+### LocalCacheRepository
+Handles local caching of dog breed data using SharedPreferences with custom JSON serialization.
+
+## Tech Stack
+
+- **Kotlin** - Modern, concise, and safe programming language
+- **Jetpack Compose** - Modern toolkit for building native UI
+- **Ktor** - Framework for building asynchronous clients and servers
+- **Kotlinx Serialization** - Multiplatform serialization library
+- **Coil** - Image loading library for Android
+- **ViewModel** - Store and manage UI-related data in a lifecycle conscious way
+- **SharedPreferences** - Framework for storing key-value pairs
+
+## Dependencies
+
+- `androidx.core:core-ktx` - Kotlin extensions for Android core libraries
+- `androidx.lifecycle:lifecycle-runtime-ktx` - Lifecycle-aware components
+- `androidx.activity:activity-compose` - Compose integration with Activity
+- `androidx.compose.*` - Jetpack Compose components
+- `io.ktor:*` - Ktor client and serialization
+- `io.coil-kt:coil-compose` - Image loading
+- `org.jetbrains.kotlinx:kotlinx-serialization-json` - JSON serialization
 
 ## Getting Started
 
@@ -148,6 +160,7 @@ com.liye.dogapidemo
 4. In the breeds list:
    - Scroll through all available dog breeds
    - View images and sub-breeds information
+   - Efficient loading with optimized item size
 
 ## Caching Strategy
 
@@ -158,6 +171,7 @@ The app implements a three-level caching strategy for optimal performance:
 3. **Network** - Fetch fresh data from the Dog CEO API
 
 Data is loaded in this order: Memory → Local → Network, ensuring quick loading times and offline capability.
+Background refresh ensures data stays up-to-date without blocking the UI.
 
 ## API
 
@@ -165,6 +179,7 @@ The app uses the [Dog CEO API](https://dog.ceo/dog-api/) which provides:
 - List of all dog breeds
 - Random images for each breed
 - Images for specific breeds and sub-breeds
+- Collections of images for each breed
 
 ## Testing
 
