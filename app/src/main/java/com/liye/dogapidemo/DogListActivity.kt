@@ -225,11 +225,11 @@ fun DogBreedItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // Sub-breeds count
+                // Sub-breeds
                 if (breed.subBreeds.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${breed.subBreeds.size} sub-breeds",
+                        text = breed.subBreeds.joinToString(","),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
